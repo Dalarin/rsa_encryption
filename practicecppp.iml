@@ -7,5 +7,9 @@
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" name="commons-math3-3.6.1" level="project" />
+    <orderEntry type="library" name="poi-scratchpad-5.0.0" level="project" />
+    <orderEntry type="library" name="poi-5.0" level="project" />
+    <orderEntry type="library" name="poi-5.0." level="project" />
   </component>
 </module>

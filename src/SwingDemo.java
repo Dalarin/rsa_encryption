@@ -15,6 +15,9 @@ public class SwingDemo {
     JMenu fileMenuforWork = new JMenu("Файл");
     JMenuItem openFile = new JMenuItem("Открыть", KeyEvent.VK_N);
     JMenuItem saveFile = new JMenuItem("Сохранить", KeyEvent.VK_N);
+    JMenu reference = new JMenu("Справка");
+    JMenuItem aboutProgram = new JMenuItem("О программе");
+    JMenuItem aboutDeveloper = new JMenuItem("О разработчике");
 
     SwingDemo()
     {
@@ -25,6 +28,9 @@ public class SwingDemo {
         fileMenuforWork.add(openFile);
         fileMenuforWork.add(saveFile);
         fileMenuforWork.setMnemonic(KeyEvent.VK_F);
+        menuBar.add(reference);
+        reference.add(aboutDeveloper);
+        reference.add(aboutProgram);
         openFile.addActionListener(menuEngine);
     }
     public static void main(final String[] args) {

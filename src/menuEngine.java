@@ -1,23 +1,16 @@
-import java.awt.LayoutManager;
-import java.awt.GridLayout;
 import java.awt.Component;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
-import javax.swing.JFrame;
-import javax.swing.JMenuBar;
 import javax.swing.JMenuItem;
-import javax.swing.JOptionPane;
 import javax.swing.JFileChooser;
 import java.io.*;
+import java.util.Arrays;
+import java.util.List;
 import java.util.Scanner;
 
-class VerticalMenuBar extends JMenuBar {
-    private static final LayoutManager grid = new GridLayout(0, 1);
+import org.apache.poi.xwpf.usermodel.XWPFDocument;
+import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 
-    public VerticalMenuBar() {
-        setLayout(grid);
-    }
-}
 
 class MenuEngine extends Component implements ActionListener {
     SwingDemo parent;
@@ -26,7 +19,23 @@ class MenuEngine extends Component implements ActionListener {
         this.parent = parent;
     }
 
-    public void parseFile(File file) throws IOException {
+    public void parseDOCXFile(File file) throws IOException {
+        String textofFile;
+        try {
+            File newfile = new File(String.valueOf(file));
+            FileInputStream fis = new FileInputStream(newfile.getAbsolutePath());
+            XWPFDocument document = new XWPFDocument(fis);
+            List<XWPFParagraph> paragraphs = document.getParagraphs();
+            for (XWPFParagraph para : paragraphs) {
+                System.out.println(para.getText()); // здесь нужно вызывать функцию шифрования, построчно (походу)
+            }
+            fis.close();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void parseTXTFile(File file) throws IOException {
         BufferedReader reader = new BufferedReader(new FileReader(file));
         StringBuilder stringBuilder = new StringBuilder();
         String line = null;
@@ -39,7 +48,9 @@ class MenuEngine extends Component implements ActionListener {
         reader.close();
         String content = stringBuilder.toString();
         System.out.println(content);
+
     }
+
 
     private void getPathFile() throws IOException {
         JFileChooser fileChooser = new JFileChooser();
@@ -55,8 +66,14 @@ class MenuEngine extends Component implements ActionListener {
                 fileNotFoundException.printStackTrace();
             }
         }
-        if (statusOfFile)
-            parseFile(selectedFile);
+        String[] parts = String.valueOf(selectedFile).split("\\.");
+        if (statusOfFile) { // тут надо разбить на строку и проверять txt или docx
+            if (parts[1].equals("txt")) {
+                parseTXTFile(selectedFile);
+            } else if (parts[1].equals("docx")) {
+                parseDOCXFile(selectedFile);
+            }
+        }
     }
 
 
