@@ -20,7 +20,7 @@ class MenuEngine extends Component implements ActionListener {
     }
 
     public void parseDOCXFile(File file) throws IOException {
-        String textofFile;
+        String textofFile = "";
         try {
             File newfile = new File(String.valueOf(file));
             FileInputStream fis = new FileInputStream(newfile.getAbsolutePath());
