@@ -11,5 +11,7 @@
     <orderEntry type="library" name="poi-scratchpad-5.0.0" level="project" />
     <orderEntry type="library" name="poi-5.0" level="project" />
     <orderEntry type="library" name="poi-5.0." level="project" />
+    <orderEntry type="library" name="bcprov-ext-jdk15on-168" level="project" />
+    <orderEntry type="library" name="bcpkix-jdk15on-168" level="project" />
   </component>
 </module>
