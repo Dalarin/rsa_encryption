@@ -1,143 +1,129 @@
-import org.apache.commons.codec.DecoderException;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 
 import javax.crypto.*;
-import javax.crypto.spec.IvParameterSpec;
-import javax.crypto.spec.PBEKeySpec;
-import javax.crypto.spec.SecretKeySpec;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.*;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.security.*;
 import java.security.spec.*;
-import java.util.Arrays;
-import java.util.Base64;
+
+import org.apache.commons.codec.binary.Base64;
+
 import java.util.List;
 import java.util.Scanner;
 
 
 import java.security.NoSuchAlgorithmException;
 
-import static org.apache.commons.io.FileUtils.*;
-import static org.apache.commons.codec.binary.Hex.decodeHex;
-import static org.apache.commons.codec.binary.Hex.encodeHex;
-
-class AESEncryption {
-    private static RSAEncryption rsa;
-
-    public static void secretKeyfromPassword(String password, String salt) throws Exception {
-        SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
-        KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 65536, 256);
-        SecretKey secret = new SecretKeySpec(factory.generateSecret(spec).getEncoded(), "AES");
-        saveKey(secret);
-    }
-
-    public static IvParameterSpec generateIv() { // получаем чисто случайное значение
-        byte[] iv = new byte[16];
-        new SecureRandom().nextBytes(iv);
-        return new IvParameterSpec(iv);
-    }
-
-    public static String AESEncrypt(String input, IvParameterSpec iv) throws Exception {
-
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.ENCRYPT_MODE, loadKey(new File("AESKey.key")), iv);
-        byte[] cipherText = cipher.doFinal(input.getBytes());
-        return Base64.getEncoder().encodeToString(cipherText);
-    }
-
-    public static String AESDecrypt(String cipherText, IvParameterSpec iv) throws Exception {
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        cipher.init(Cipher.DECRYPT_MODE, loadKey(new File("AESKey.key")), iv);
-        byte[] plainText = cipher.doFinal(Base64.getDecoder()
-                .decode(cipherText));
-        return new String(plainText);
-    }
-
-    public static void saveKey(SecretKey key) throws Exception {
-        char[] hex = encodeHex(rsa.Encryption(Arrays.toString(key.getEncoded())));
-        writeStringToFile(new File("AESKey"), String.valueOf(hex));
-    }
-
-    public static SecretKey loadKey(File file) throws Exception {
-        String data = new String(readFileToByteArray(file));
-        data = RSAEncryption.Decryption(data);
-        byte[] encoded;
-        try {
-            encoded = decodeHex(data.toCharArray());
-        } catch (DecoderException e) {
-            e.printStackTrace();
-            return null;
-        }
-        return new SecretKeySpec(encoded, "AES");
-    }
-
-
-}
-
 class RSAEncryption {
-    public boolean statusOfKeys = false;
-    PublicKey publicKey;
-    PrivateKey privateKey;
+    private static final int MAX_ENCRYPT_BLOCK = 117; // максимальный размер шифрования RSA (в байтах)
+    private static final int MAX_DECRYPT_BLOCK = 128; // максимальный размер дешифрования RSA (в байтах)
 
-    public void genKeys() throws NoSuchAlgorithmException, IOException {
+    private static KeyPair getKeyPair() throws Exception { // генерируем пару для генерации ключей
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
-        generator.initialize(2048);
-        KeyPair pair = generator.generateKeyPair();
-        savePublicKey(pair.getPublic());
-        savePrivateKey(pair.getPrivate());
-        statusOfKeys = true;
+        generator.initialize(1024);
+        return generator.generateKeyPair();
+    }
+
+    public void genKeys() throws Exception { // генерируем два ключа и сохраняем их в файл
+        KeyPair keyPair = getKeyPair();
+        String privateKey = new String(Base64.encodeBase64(keyPair.getPrivate().getEncoded())); // getEncoded возвращает данные в формате DER
+        String publicKey = new String(Base64.encodeBase64(keyPair.getPublic().getEncoded()));
+        saveKeys(privateKey, publicKey);
+    }
+
+    public static PrivateKey getPrivateKey(String privateKey) throws Exception { // создаем приватный ключ из строки
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        byte[] decodedKey = Base64.decodeBase64(privateKey.getBytes());
+        PKCS8EncodedKeySpec keySpec = new PKCS8EncodedKeySpec(decodedKey);
+        return keyFactory.generatePrivate(keySpec);
+    }
+
+    public static PublicKey getPublicKey(String publicKey) throws Exception { // создаем публичный ключ из строки
+        KeyFactory keyFactory = KeyFactory.getInstance("RSA");
+        byte[] decodedKey = Base64.decodeBase64(publicKey.getBytes());
+        X509EncodedKeySpec keySpec = new X509EncodedKeySpec(decodedKey);
+        return keyFactory.generatePublic(keySpec);
     }
 
 
-    private void savePrivateKey(PrivateKey privateKey) throws IOException {
-        try (FileOutputStream fos = new FileOutputStream("private.key")) {
-            fos.write(privateKey.getEncoded());
+    private void saveKeys(String privateKey, String publicKey) throws IOException { // сохраняем ключи в файл (тут бы еще hex шифрование)
+        BufferedWriter writer = new BufferedWriter(new FileWriter("private.key"));
+        writer.write(privateKey);
+        writer.close();
+        writer = new BufferedWriter(new FileWriter("public.pub"));
+        writer.write(publicKey);
+        writer.close();
+
+    }
+
+
+    private static String readPrivateKey() throws IOException { // читаем ключ из файла (для того, чтоб пользователь сам выбирал, когда генерировать новый ключ)
+        BufferedReader reader = new BufferedReader(new FileReader("private.key"));
+        String currentLine = reader.readLine();
+        reader.close();
+        return currentLine;
+    }
+
+    private String readPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException { // читаем ключ из файла (для того, чтоб пользователь сам выбирал, когда генерировать новый ключ)
+        BufferedReader reader = new BufferedReader(new FileReader("public.pub"));
+        String currentLine = reader.readLine();
+        reader.close();
+        return currentLine;
+    }
+
+
+    public String Encryption(String text) throws
+            Exception {
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.ENCRYPT_MODE, getPublicKey(readPublicKey()));
+        int inputLen = text.getBytes().length;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int offset = 0;
+        byte[] cache;
+        int i = 0;
+        // Кодируем один из сегментов текста
+        while (inputLen - offset > 0) {
+            if (inputLen - offset > MAX_ENCRYPT_BLOCK) {
+                cache = cipher.doFinal(text.getBytes(), offset, MAX_ENCRYPT_BLOCK);
+            } else {
+                cache = cipher.doFinal(text.getBytes(), offset, inputLen - offset);
+            }
+            out.write(cache, 0, cache.length);
+            i++;
+            offset = i * MAX_ENCRYPT_BLOCK;
         }
-    }
-
-    private void savePublicKey(PublicKey publicKey) {
-        try (FileOutputStream fos = new FileOutputStream("public.pub")) {
-            fos.write(publicKey.getEncoded());
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    private static PrivateKey readPrivateKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        byte[] keyBytes = Files.readAllBytes(Paths.get("private.key"));
-        PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        System.out.println(kf.generatePrivate(spec));
-        return kf.generatePrivate(spec);
-    }
-
-    private PublicKey readPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException {
-        byte[] keyBytes = Files.readAllBytes(Paths.get("public.pub"));
-        X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-        KeyFactory kf = KeyFactory.getInstance("RSA");
-        publicKey = kf.generatePublic(spec);
-        return kf.generatePublic(spec);
-
-    }
-
-
-    public byte[] Encryption(String text) throws NoSuchPaddingException, NoSuchAlgorithmException, IOException, InvalidKeySpecException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException {
-        Cipher encrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        encrypt.init(Cipher.ENCRYPT_MODE, readPublicKey());
-        return encrypt.doFinal(text.getBytes(StandardCharsets.UTF_8));
+        byte[] encryptedData = out.toByteArray();
+        out.close();
+        return new String(Base64.encodeBase64String(encryptedData));
     }
 
     public static String Decryption(String cryptedTEXT) throws Exception {
-        Cipher decrypt = Cipher.getInstance("RSA/ECB/PKCS1Padding");
-        decrypt.init(Cipher.DECRYPT_MODE, readPrivateKey());
-        return new String(decrypt.doFinal(cryptedTEXT.getBytes(StandardCharsets.UTF_8)), StandardCharsets.UTF_8);
+        Cipher cipher = Cipher.getInstance("RSA");
+        cipher.init(Cipher.DECRYPT_MODE, getPrivateKey(readPrivateKey()));
+        byte[] dataBytes = Base64.decodeBase64(cryptedTEXT);
+        int inputLen = dataBytes.length;
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        int offset = 0;
+        byte[] cache;
+        int i = 0;
+        while (inputLen - offset > 0) {
+            if (inputLen - offset > MAX_DECRYPT_BLOCK) {
+                cache = cipher.doFinal(dataBytes, offset, MAX_DECRYPT_BLOCK);
+            } else {
+                cache = cipher.doFinal(dataBytes, offset, inputLen - offset);
+            }
+            out.write(cache, 0, cache.length);
+            i++;
+            offset = i * MAX_DECRYPT_BLOCK;
+        }
+        byte[] decryptedData = out.toByteArray();
+        out.close();
+        System.out.println(new String(decryptedData, "UTF-8"));
+        return new String(decryptedData, "UTF-8");
 
     }
 }
@@ -156,7 +142,7 @@ class MenuEngine extends Component implements ActionListener {
 
     private static boolean statusOfFile = false;
 
-    private void parseDOCXFile(File file) {
+    private void parseDOCXFile(File file) { // парсим DOCX файл с помощью библиотеки Apache
         try {
             File newfile = new File(String.valueOf(file));
             FileInputStream fis = new FileInputStream(newfile.getAbsolutePath());
@@ -171,7 +157,7 @@ class MenuEngine extends Component implements ActionListener {
         }
     }
 
-    private void createSettingsWindow() {
+    private void createSettingsWindow() { // создаем окно настроек (доработать)
         JFrame frames = new JFrame("Настройки");
         frames.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
         frames.setSize(300, 300);
@@ -179,7 +165,7 @@ class MenuEngine extends Component implements ActionListener {
 
     }
 
-    private void getPathFile() throws IOException {
+    private void getPathFile() throws IOException { // получаем ссылку на файл
         JFileChooser fileChooser = new JFileChooser();
         File selectedFile = null;
         Scanner in = null;
@@ -206,7 +192,7 @@ class MenuEngine extends Component implements ActionListener {
     }
 
 
-    private void parseTXTFile(File file) throws IOException {
+    private void parseTXTFile(File file) throws IOException { // парсим TXT документ
         BufferedReader reader = new BufferedReader(new FileReader(file));
         StringBuilder stringBuilder = new StringBuilder();
         String line = null;
@@ -221,7 +207,7 @@ class MenuEngine extends Component implements ActionListener {
 
     }
 
-    private void writeTEXT() throws IOException {
+    private void writeTEXT() throws IOException { // оно должно записывать текст в файл. Не реализовано, пока что
         FileWriter fileWriter = new FileWriter(this.pathOfFile);
         PrintWriter printWriter = new PrintWriter(fileWriter);
         printWriter.printf(textInFile);
@@ -242,6 +228,11 @@ class MenuEngine extends Component implements ActionListener {
                 }
             } else if (src == parent.openMenu) {
                 createSettingsWindow();
+                try {
+                    child.genKeys();
+                } catch (Exception noSuchAlgorithmException) {
+                    noSuchAlgorithmException.printStackTrace();
+                }
             }
         } else if (src instanceof JButton) {
             JButton clickednotItem = (JButton) e.getSource();
@@ -250,8 +241,8 @@ class MenuEngine extends Component implements ActionListener {
                 File publicKey = new File("D:\\javaProject\\practicecppp\\public.pub");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
-                        child.Encryption(pathOfFile);
-                    } catch (NoSuchPaddingException | NoSuchAlgorithmException | IOException | InvalidKeySpecException | InvalidKeyException | IllegalBlockSizeException | BadPaddingException noSuchPaddingException) {
+                        textInFile = child.Encryption(textInFile);
+                    } catch (Exception noSuchPaddingException) {
                         noSuchPaddingException.printStackTrace();
                     }
                 }
@@ -261,7 +252,7 @@ class MenuEngine extends Component implements ActionListener {
                 System.out.println("SOMETHING HAPPENED");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
-                        RSAEncryption.Decryption(pathOfFile);
+                        RSAEncryption.Decryption(textInFile);
                         System.out.println("SOMETHING HAPPENED");
                     } catch (Exception noSuchPaddingException) {
                         noSuchPaddingException.printStackTrace();
@@ -272,6 +263,4 @@ class MenuEngine extends Component implements ActionListener {
         }
     }
 }
-
-
 
