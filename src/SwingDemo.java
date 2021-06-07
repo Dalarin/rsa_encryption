@@ -12,14 +12,13 @@ public class SwingDemo {
     JMenu fileMenu = new JMenu("Меню");
     JMenu fileMenuforWork = new JMenu("Файл");
     JMenuItem openFile = new JMenuItem("Открыть", KeyEvent.VK_N);
-    JMenuItem saveFile = new JMenuItem("Сохранить", KeyEvent.VK_N);
     JMenu settingsMenu = new JMenu("Настройки");
     JMenuItem openMenu = new JMenuItem("Настройки");
     JMenu reference = new JMenu("Справка");
     JMenuItem aboutProgram = new JMenuItem("О программе");
     JMenuItem aboutDeveloper = new JMenuItem("О разработчике");
-    JButton encrypt = new JButton("Зашифровать");
-    JButton decrypt = new JButton("Дешифровать");
+    JButton encrypt = new JButton("Зашифровать и сохранить");
+    JButton decrypt = new JButton("Дешифровать и сохранить");
 
     public void CreateButtons() {
         panel.add("South", encrypt);
@@ -37,7 +36,6 @@ public class SwingDemo {
         menuBar.add(fileMenu);
         fileMenu.add(fileMenuforWork);
         fileMenuforWork.add(openFile);
-        fileMenuforWork.add(saveFile);
         fileMenuforWork.setMnemonic(KeyEvent.VK_F);
         menuBar.add(settingsMenu);
         menuBar.add(reference);
@@ -46,6 +44,8 @@ public class SwingDemo {
         settingsMenu.add(openMenu);
         openFile.addActionListener(menuEngine);
         openMenu.addActionListener(menuEngine);
+        encrypt.addActionListener(menuEngine);
+        decrypt.addActionListener(menuEngine);
     }
 
     public static void main(final String[] args) {
