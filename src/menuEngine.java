@@ -1,26 +1,40 @@
+import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
+import org.apache.poi.xwpf.usermodel.XWPFRun;
 
-import javax.crypto.*;
+import javax.crypto.Cipher;
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.image.BufferedImage;
 import java.io.*;
 import java.security.*;
-import java.security.spec.*;
-
-import org.apache.commons.codec.binary.Base64;
-
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.X509EncodedKeySpec;
 import java.util.List;
 import java.util.Scanner;
-
-
-import java.security.NoSuchAlgorithmException;
 
 class RSAEncryption {
     private static final int MAX_ENCRYPT_BLOCK = 117; // максимальный размер шифрования RSA (в байтах)
     private static final int MAX_DECRYPT_BLOCK = 128; // максимальный размер дешифрования RSA (в байтах)
+    SwingDemo parent;
+
+    RSAEncryption(SwingDemo parent) {
+        this.parent = parent;
+    }
+
+    private void saveKeys(String privateKey, String publicKey) throws IOException { // сохраняем ключи в файл (тут бы еще hex шифрование)
+        BufferedWriter writer = new BufferedWriter(new FileWriter("private.key"));
+        writer.write(privateKey);
+        writer.close();
+        writer = new BufferedWriter(new FileWriter("public.pub"));
+        writer.write(publicKey);
+        writer.close();
+
+    }
 
     private static KeyPair getKeyPair() throws Exception { // генерируем пару для генерации ключей
         KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA");
@@ -32,6 +46,8 @@ class RSAEncryption {
         KeyPair keyPair = getKeyPair();
         String privateKey = new String(Base64.encodeBase64(keyPair.getPrivate().getEncoded())); // getEncoded возвращает данные в формате DER
         String publicKey = new String(Base64.encodeBase64(keyPair.getPublic().getEncoded()));
+        parent.cashField.setText(privateKey);
+        parent.checksField.setText(publicKey);
         saveKeys(privateKey, publicKey);
     }
 
@@ -50,17 +66,6 @@ class RSAEncryption {
     }
 
 
-    private void saveKeys(String privateKey, String publicKey) throws IOException { // сохраняем ключи в файл (тут бы еще hex шифрование)
-        BufferedWriter writer = new BufferedWriter(new FileWriter("private.key"));
-        writer.write(privateKey);
-        writer.close();
-        writer = new BufferedWriter(new FileWriter("public.pub"));
-        writer.write(publicKey);
-        writer.close();
-
-    }
-
-
     private static String readPrivateKey() throws IOException { // читаем ключ из файла (для того, чтоб пользователь сам выбирал, когда генерировать новый ключ)
         BufferedReader reader = new BufferedReader(new FileReader("private.key"));
         String currentLine = reader.readLine();
@@ -68,7 +73,7 @@ class RSAEncryption {
         return currentLine;
     }
 
-    private String readPublicKey() throws IOException, NoSuchAlgorithmException, InvalidKeySpecException { // читаем ключ из файла (для того, чтоб пользователь сам выбирал, когда генерировать новый ключ)
+    private String readPublicKey() throws IOException { // читаем ключ из файла (для того, чтоб пользователь сам выбирал, когда генерировать новый ключ)
         BufferedReader reader = new BufferedReader(new FileReader("public.pub"));
         String currentLine = reader.readLine();
         reader.close();
@@ -98,10 +103,11 @@ class RSAEncryption {
         }
         byte[] encryptedData = out.toByteArray();
         out.close();
+        parent.textArea.setText(Base64.encodeBase64String(encryptedData));
         return new String(Base64.encodeBase64String(encryptedData));
     }
 
-    public static String Decryption(String cryptedTEXT) throws Exception {
+    public String Decryption(String cryptedTEXT) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, getPrivateKey(readPrivateKey()));
         byte[] dataBytes = Base64.decodeBase64(cryptedTEXT);
@@ -122,7 +128,7 @@ class RSAEncryption {
         }
         byte[] decryptedData = out.toByteArray();
         out.close();
-        System.out.println(new String(decryptedData, "UTF-8"));
+        parent.textArea.setText(new String(decryptedData, "UTF-8"));
         return new String(decryptedData, "UTF-8");
 
     }
@@ -141,6 +147,7 @@ class MenuEngine extends Component implements ActionListener {
     }
 
     private static boolean statusOfFile = false;
+    private String typeOfFile = "";
 
     private void parseDOCXFile(File file) { // парсим DOCX файл с помощью библиотеки Apache
         try {
@@ -151,19 +158,13 @@ class MenuEngine extends Component implements ActionListener {
             for (XWPFParagraph para : paragraphs) {
                 textInFile += para.getText();
             }
+            parent.textArea.setText(textInFile);
             fis.close();
         } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    private void createSettingsWindow() { // создаем окно настроек (доработать)
-        JFrame frames = new JFrame("Настройки");
-        frames.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
-        frames.setSize(300, 300);
-        frames.setVisible(true);
-
-    }
 
     private void getPathFile() throws IOException { // получаем ссылку на файл
         JFileChooser fileChooser = new JFileChooser();
@@ -184,9 +185,11 @@ class MenuEngine extends Component implements ActionListener {
             if (parts[1].equals("txt")) {
                 parseTXTFile(selectedFile);
                 parent.CreateButtons();
+                typeOfFile = "txt";
             } else if (parts[1].equals("docx")) {
                 parseDOCXFile(selectedFile);
                 parent.CreateButtons();
+                typeOfFile = "docx";
             }
         }
     }
@@ -204,6 +207,7 @@ class MenuEngine extends Component implements ActionListener {
         stringBuilder.deleteCharAt(stringBuilder.length() - 1);
         reader.close();
         textInFile = stringBuilder.toString();
+        parent.textArea.setText(textInFile);
 
     }
 
@@ -212,6 +216,37 @@ class MenuEngine extends Component implements ActionListener {
         PrintWriter printWriter = new PrintWriter(fileWriter);
         printWriter.printf(textInFile);
         printWriter.close();
+
+    }
+
+    private void writeDOCX() {
+        XWPFDocument document = new XWPFDocument();
+        XWPFParagraph tmpParagraph = document.createParagraph();
+        XWPFRun tmpRun = tmpParagraph.createRun();
+        tmpRun.setText(textInFile);
+        try {
+            document.write(new FileOutputStream(new File(pathOfFile)));
+        } catch (IOException ignored) {
+        }
+    }
+
+    private void saveNotification() {
+        JOptionPane.showMessageDialog(null, "Файл успешно сохранен!", "Сохранить", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    private void aboutDeveloperWindow() throws IOException {
+        JFrame frames = new JFrame("О разработчике");
+        JPanel panel = new JPanel(new BorderLayout());
+        BufferedImage image = ImageIO.read(new File("D:\\javaProject\\practicecppp\\images\\aboutDeveloper.png"));
+        JLabel label = new JLabel(new ImageIcon(image));
+        JLabel info = new JLabel("Вероятно, разработчика похитили инопланетяне", SwingConstants.CENTER);
+        panel.add("Center", label);
+        panel.add("North", info);
+        frames.add(panel);
+        frames.setDefaultCloseOperation(JFrame.HIDE_ON_CLOSE);
+        frames.setSize(340, 450);
+        frames.setVisible(true);
+        frames.setResizable(false);
 
     }
 
@@ -227,11 +262,25 @@ class MenuEngine extends Component implements ActionListener {
                     ioException.printStackTrace();
                 }
             } else if (src == parent.openMenu) {
-                createSettingsWindow();
+                parent.createSettingsWindow();
+            } else if (src == parent.saveFile) {
+                if (typeOfFile.equals("txt")) {
+                    try {
+                        writeTEXT();
+                        saveNotification();
+                    } catch (IOException ioException) {
+                        ioException.printStackTrace();
+                    }
+                } else if (typeOfFile.equals("docx")) {
+                    writeDOCX();
+                    saveNotification();
+                }
+
+            } else if (src == parent.aboutDeveloper) {
                 try {
-                    child.genKeys();
-                } catch (Exception noSuchAlgorithmException) {
-                    noSuchAlgorithmException.printStackTrace();
+                    aboutDeveloperWindow();
+                } catch (IOException ioException) {
+                    ioException.printStackTrace();
                 }
             }
         } else if (src instanceof JButton) {
@@ -249,16 +298,25 @@ class MenuEngine extends Component implements ActionListener {
             } else if (src == parent.decrypt) {
                 File privateKey = new File("D:\\javaProject\\practicecppp\\private.key");
                 File publicKey = new File("D:\\javaProject\\practicecppp\\public.pub");
-                System.out.println("SOMETHING HAPPENED");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
-                        RSAEncryption.Decryption(textInFile);
+                        textInFile = child.Decryption(textInFile);
                         System.out.println("SOMETHING HAPPENED");
                     } catch (Exception noSuchPaddingException) {
                         noSuchPaddingException.printStackTrace();
                     }
                 }
-
+            } else if (src == parent.generate) {
+                int reply = JOptionPane.showConfirmDialog(null,
+                        "Вы уверены, что хотите сгенерировать новые ключи?\n Доступ к старым ключам будет утерян навсегда", "Генерация ключей",
+                        JOptionPane.YES_NO_OPTION);
+                if (reply == JOptionPane.YES_OPTION) {
+                    try {
+                        child.genKeys();
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
+                    }
+                }
             }
         }
     }
