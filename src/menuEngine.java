@@ -26,6 +26,28 @@ class RSAEncryption {
         this.parent = parent;
     }
 
+    private String stringToHex(String string) {
+        StringBuilder sb = new StringBuilder();
+        char[] ch = string.toCharArray();
+        for (int i = 0; i < ch.length; i++) {
+            String hexString = Integer.toHexString(ch[i]);
+            sb.append(hexString);
+        }
+        return sb.toString();
+    }
+
+    private String hexToString(String hexagon) {
+        String result = "";
+        char[] charArray = hexagon.toCharArray();
+        for (int i = 0; i < charArray.length; i = i + 2) {
+            String st = "" + charArray[i] + "" + charArray[i + 1];
+            char ch = (char) Integer.parseInt(st, 16);
+            result = result + ch;
+        }
+        return result;
+    }
+
+
     private void saveKeys(String privateKey, String publicKey) throws IOException { // сохраняем ключи в файл (тут бы еще hex шифрование)
         BufferedWriter writer = new BufferedWriter(new FileWriter("private.key"));
         writer.write(privateKey);
@@ -48,7 +70,7 @@ class RSAEncryption {
         String publicKey = new String(Base64.encodeBase64(keyPair.getPublic().getEncoded()));
         parent.cashField.setText(privateKey);
         parent.checksField.setText(publicKey);
-        saveKeys(privateKey, publicKey);
+        saveKeys(stringToHex(privateKey), stringToHex(publicKey));
     }
 
     public static PrivateKey getPrivateKey(String privateKey) throws Exception { // создаем приватный ключ из строки
@@ -84,7 +106,7 @@ class RSAEncryption {
     public String Encryption(String text) throws
             Exception {
         Cipher cipher = Cipher.getInstance("RSA");
-        cipher.init(Cipher.ENCRYPT_MODE, getPublicKey(readPublicKey()));
+        cipher.init(Cipher.ENCRYPT_MODE, getPublicKey(hexToString(readPublicKey())));
         int inputLen = text.getBytes().length;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int offset = 0;
@@ -109,7 +131,7 @@ class RSAEncryption {
 
     public String Decryption(String cryptedTEXT) throws Exception {
         Cipher cipher = Cipher.getInstance("RSA");
-        cipher.init(Cipher.DECRYPT_MODE, getPrivateKey(readPrivateKey()));
+        cipher.init(Cipher.DECRYPT_MODE, getPrivateKey(hexToString(readPrivateKey())));
         byte[] dataBytes = Base64.decodeBase64(cryptedTEXT);
         int inputLen = dataBytes.length;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -256,6 +278,7 @@ class MenuEngine extends Component implements ActionListener {
         if (src instanceof JMenuItem) {
             JMenuItem clickedButton = (JMenuItem) e.getSource();
             if (src == parent.openFile) {
+                textInFile = "";
                 try {
                     getPathFile();
                 } catch (IOException ioException) {
