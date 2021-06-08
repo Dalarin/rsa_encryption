@@ -6,6 +6,7 @@ import org.apache.poi.xwpf.usermodel.XWPFRun;
 import javax.crypto.Cipher;
 import javax.imageio.ImageIO;
 import javax.swing.*;
+import javax.swing.filechooser.FileNameExtensionFilter;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -190,6 +191,7 @@ class MenuEngine extends Component implements ActionListener {
 
     private void getPathFile() throws IOException { // получаем ссылку на файл
         JFileChooser fileChooser = new JFileChooser();
+        fileChooser.setFileFilter(new FileNameExtensionFilter("Текстовые файлы ( *.docx *.txt)", "docx", "txt"));
         File selectedFile = null;
         Scanner in = null;
         if (fileChooser.showOpenDialog(null) == JFileChooser.APPROVE_OPTION) {
@@ -317,6 +319,8 @@ class MenuEngine extends Component implements ActionListener {
                     } catch (Exception noSuchPaddingException) {
                         noSuchPaddingException.printStackTrace();
                     }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Ошибка шифрования!\nКлючи шифрования не были сгенерированы", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
                 }
             } else if (src == parent.decrypt) {
                 File privateKey = new File("D:\\javaProject\\practicecppp\\private.key");
@@ -327,7 +331,12 @@ class MenuEngine extends Component implements ActionListener {
                         System.out.println("SOMETHING HAPPENED");
                     } catch (Exception noSuchPaddingException) {
                         noSuchPaddingException.printStackTrace();
+                        JOptionPane.showMessageDialog(null, "Ошибка дешифрования!\nВозможно, файл не был зашифрован, или были изменены ключи шифрования", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
+
                     }
+                } else {
+                    JOptionPane.showMessageDialog(null, "Ошибка дешифрования!\nКлючи шифрования не были сгенерированы", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
+
                 }
             } else if (src == parent.generate) {
                 int reply = JOptionPane.showConfirmDialog(null,
