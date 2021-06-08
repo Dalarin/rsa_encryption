@@ -1,5 +1,6 @@
 import java.awt.*;
 import java.awt.event.KeyEvent;
+import java.util.StringTokenizer;
 import javax.swing.*;
 
 public class SwingDemo {
@@ -67,6 +68,8 @@ public class SwingDemo {
         generate.addActionListener(menuEngine);
         aboutDeveloper.addActionListener(menuEngine);
         aboutProgram.addActionListener(menuEngine);
+        encrypt.setToolTipText("Вы можете выделить текст и зашифровать только его!");
+        decrypt.setToolTipText("Вы можете выделить текст и дешифровать только его!");
     }
     public void createSettingsWindow() { // создаем окно настроек (доработать)
         JFrame frames = new JFrame("Настройки");

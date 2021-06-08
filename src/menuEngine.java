@@ -12,6 +12,7 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.image.BufferedImage;
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.security.*;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
@@ -25,6 +26,10 @@ class RSAEncryption {
 
     RSAEncryption(SwingDemo parent) {
         this.parent = parent;
+    }
+
+    private String changeText(String text, String bufferText, String cryptedText) {
+        return text.replace(bufferText, cryptedText);
     }
 
     private String stringToHex(String string) {
@@ -104,36 +109,65 @@ class RSAEncryption {
     }
 
 
-    public String Encryption(String text) throws
+    public String Encryption(String text, String selectedText) throws
             Exception {
+        String bufferText = selectedText;
+        boolean selectedTextStatus = false;
+        if (selectedText != null && !selectedText.trim().isEmpty()) selectedTextStatus = true;
+        System.out.println(selectedTextStatus);
         Cipher cipher = Cipher.getInstance("RSA");
+        int inputLen;
         cipher.init(Cipher.ENCRYPT_MODE, getPublicKey(hexToString(readPublicKey())));
-        int inputLen = text.getBytes().length;
+        if (selectedTextStatus) inputLen = selectedText.getBytes().length;
+        else inputLen = text.getBytes().length;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int offset = 0;
         byte[] cache;
         int i = 0;
         // Кодируем один из сегментов текста
         while (inputLen - offset > 0) {
-            if (inputLen - offset > MAX_ENCRYPT_BLOCK) {
-                cache = cipher.doFinal(text.getBytes(), offset, MAX_ENCRYPT_BLOCK);
+            if (selectedTextStatus) {
+                if (inputLen - offset > MAX_ENCRYPT_BLOCK) {
+                    cache = cipher.doFinal(selectedText.getBytes(), offset, MAX_ENCRYPT_BLOCK);
+                } else {
+                    cache = cipher.doFinal(selectedText.getBytes(), offset, inputLen - offset);
+                }
+                out.write(cache, 0, cache.length);
+                i++;
+                offset = i * MAX_ENCRYPT_BLOCK;
             } else {
-                cache = cipher.doFinal(text.getBytes(), offset, inputLen - offset);
+                if (inputLen - offset > MAX_ENCRYPT_BLOCK) {
+                    cache = cipher.doFinal(text.getBytes(), offset, MAX_ENCRYPT_BLOCK);
+                } else {
+                    cache = cipher.doFinal(text.getBytes(), offset, inputLen - offset);
+                }
+                out.write(cache, 0, cache.length);
+                i++;
+                offset = i * MAX_ENCRYPT_BLOCK;
             }
-            out.write(cache, 0, cache.length);
-            i++;
-            offset = i * MAX_ENCRYPT_BLOCK;
         }
+
         byte[] encryptedData = out.toByteArray();
         out.close();
-        parent.textArea.setText(Base64.encodeBase64String(encryptedData));
-        return new String(Base64.encodeBase64String(encryptedData));
+        String enctyptedString;
+        if (selectedTextStatus)
+            enctyptedString = changeText(text, bufferText, Base64.encodeBase64String(encryptedData));
+        else enctyptedString = Base64.encodeBase64String(encryptedData);
+        System.out.println(enctyptedString);
+        parent.textArea.setText(enctyptedString);
+        return enctyptedString;
     }
 
-    public String Decryption(String cryptedTEXT) throws Exception {
+
+    public String Decryption(String cryptedTEXT, String selectedText) throws Exception {
+        String bufferText = selectedText;
+        boolean selectedTextStatus = false;
+        if (selectedText != null && !selectedText.trim().isEmpty()) selectedTextStatus = true;
         Cipher cipher = Cipher.getInstance("RSA");
         cipher.init(Cipher.DECRYPT_MODE, getPrivateKey(hexToString(readPrivateKey())));
-        byte[] dataBytes = Base64.decodeBase64(cryptedTEXT);
+        byte[] dataBytes;
+        if (selectedTextStatus) dataBytes = Base64.decodeBase64(selectedText);
+        else dataBytes = Base64.decodeBase64(cryptedTEXT);
         int inputLen = dataBytes.length;
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         int offset = 0;
@@ -148,11 +182,18 @@ class RSAEncryption {
             out.write(cache, 0, cache.length);
             i++;
             offset = i * MAX_DECRYPT_BLOCK;
+
         }
         byte[] decryptedData = out.toByteArray();
         out.close();
-        parent.textArea.setText(new String(decryptedData, "UTF-8"));
-        return new String(decryptedData, "UTF-8");
+        if (selectedTextStatus) {
+            parent.textArea.setText(changeText(cryptedTEXT, bufferText, new String(decryptedData, "UTF-8")));
+            return changeText(cryptedTEXT, bufferText, new String(decryptedData, "UTF-8"));
+        } else {
+            parent.textArea.setText(new String(decryptedData, "UTF-8"));
+            return new String(decryptedData, "UTF-8");
+
+        }
 
     }
 }
@@ -163,6 +204,7 @@ class MenuEngine extends Component implements ActionListener {
     RSAEncryption child;
     String textInFile = "";
     String pathOfFile = "";
+    String selectedText = "";
 
     MenuEngine(SwingDemo parent, RSAEncryption child) {
         this.parent = parent;
@@ -315,9 +357,11 @@ class MenuEngine extends Component implements ActionListener {
                 File publicKey = new File("D:\\javaProject\\practicecppp\\public.pub");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
-                        textInFile = child.Encryption(textInFile);
-                    } catch (Exception noSuchPaddingException) {
-                        noSuchPaddingException.printStackTrace();
+                        selectedText = parent.textArea.getSelectedText();
+                        textInFile = child.Encryption(textInFile, selectedText);
+                        selectedText = "";
+                    } catch (Exception exception) {
+                        exception.printStackTrace();
                     }
                 } else {
                     JOptionPane.showMessageDialog(null, "Ошибка шифрования!\nКлючи шифрования не были сгенерированы", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
@@ -327,16 +371,16 @@ class MenuEngine extends Component implements ActionListener {
                 File publicKey = new File("D:\\javaProject\\practicecppp\\public.pub");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
-                        textInFile = child.Decryption(textInFile);
+                        selectedText = parent.textArea.getSelectedText();
+                        textInFile = child.Decryption(textInFile, selectedText);
+                        selectedText = "";
                         System.out.println("SOMETHING HAPPENED");
                     } catch (Exception noSuchPaddingException) {
                         noSuchPaddingException.printStackTrace();
                         JOptionPane.showMessageDialog(null, "Ошибка дешифрования!\nВозможно, файл не был зашифрован, или были изменены ключи шифрования", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
-
                     }
                 } else {
                     JOptionPane.showMessageDialog(null, "Ошибка дешифрования!\nКлючи шифрования не были сгенерированы", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
-
                 }
             } else if (src == parent.generate) {
                 int reply = JOptionPane.showConfirmDialog(null,
@@ -353,4 +397,5 @@ class MenuEngine extends Component implements ActionListener {
         }
     }
 }
+
 
