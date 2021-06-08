@@ -1,3 +1,5 @@
+package com.rsa.rsaencryption;
+
 import org.apache.commons.codec.binary.Base64;
 import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
@@ -43,14 +45,14 @@ class RSAEncryption {
     }
 
     private String hexToString(String hexagon) {
-        String result = "";
+        StringBuilder result = new StringBuilder();
         char[] charArray = hexagon.toCharArray();
         for (int i = 0; i < charArray.length; i = i + 2) {
             String st = "" + charArray[i] + "" + charArray[i + 1];
             char ch = (char) Integer.parseInt(st, 16);
-            result = result + ch;
+            result.append(ch);
         }
-        return result;
+        return result.toString();
     }
 
 
@@ -187,11 +189,11 @@ class RSAEncryption {
         byte[] decryptedData = out.toByteArray();
         out.close();
         if (selectedTextStatus) {
-            parent.textArea.setText(changeText(cryptedTEXT, bufferText, new String(decryptedData, "UTF-8")));
-            return changeText(cryptedTEXT, bufferText, new String(decryptedData, "UTF-8"));
+            parent.textArea.setText(changeText(cryptedTEXT, bufferText, new String(decryptedData)));
+            return changeText(cryptedTEXT, bufferText, new String(decryptedData));
         } else {
-            parent.textArea.setText(new String(decryptedData, "UTF-8"));
-            return new String(decryptedData, "UTF-8");
+            parent.textArea.setText(new String(decryptedData));
+            return new String(decryptedData);
 
         }
 
@@ -204,7 +206,7 @@ class MenuEngine extends Component implements ActionListener {
     RSAEncryption child;
     String textInFile = "";
     String pathOfFile = "";
-    String selectedText = "";
+    String selectedText = new String();
 
     MenuEngine(SwingDemo parent, RSAEncryption child) {
         this.parent = parent;
@@ -303,7 +305,7 @@ class MenuEngine extends Component implements ActionListener {
     private void aboutDeveloperWindow() throws IOException {
         JFrame frames = new JFrame("О разработчике");
         JPanel panel = new JPanel(new BorderLayout());
-        BufferedImage image = ImageIO.read(new File("D:\\javaProject\\practicecppp\\images\\aboutDeveloper.png"));
+        BufferedImage image = ImageIO.read(new File("images//aboutDeveloper.png"));
         JLabel label = new JLabel(new ImageIcon(image));
         JLabel info = new JLabel("Вероятно, разработчика похитили инопланетяне", SwingConstants.CENTER);
         panel.add("Center", label);
@@ -353,8 +355,8 @@ class MenuEngine extends Component implements ActionListener {
         } else if (src instanceof JButton) {
             JButton clickednotItem = (JButton) e.getSource();
             if (src == parent.encrypt) {
-                File privateKey = new File("D:\\javaProject\\practicecppp\\private.key");
-                File publicKey = new File("D:\\javaProject\\practicecppp\\public.pub");
+                File privateKey = new File("private.key");
+                File publicKey = new File("public.pub");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
                         selectedText = parent.textArea.getSelectedText();
@@ -367,8 +369,8 @@ class MenuEngine extends Component implements ActionListener {
                     JOptionPane.showMessageDialog(null, "Ошибка шифрования!\nКлючи шифрования не были сгенерированы", "Ошибка", JOptionPane.INFORMATION_MESSAGE);
                 }
             } else if (src == parent.decrypt) {
-                File privateKey = new File("D:\\javaProject\\practicecppp\\private.key");
-                File publicKey = new File("D:\\javaProject\\practicecppp\\public.pub");
+                File privateKey = new File("private.key");
+                File publicKey = new File("public.pub");
                 if ((privateKey.exists() && !privateKey.isDirectory()) && (publicKey.exists() && !publicKey.isDirectory())) {
                     try {
                         selectedText = parent.textArea.getSelectedText();

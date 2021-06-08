@@ -1,6 +1,6 @@
+package com.rsa.rsaencryption;
 import java.awt.*;
 import java.awt.event.KeyEvent;
-import java.util.StringTokenizer;
 import javax.swing.*;
 
 public class SwingDemo {
